@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         fetcher.fetch_and_store,
         "interval",
-        minutes=5,
+        minutes=10,
         id="fetch_taipower",
         max_instances=1,
         coalesce=True,

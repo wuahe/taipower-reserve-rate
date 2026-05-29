@@ -34,7 +34,7 @@ INGEST_URL = os.environ.get(
     "INGEST_URL",
     "https://taipower-reserve.zeabur.app/api/ingest",
 )
-INTERVAL_SEC = 5 * 60   # 5 分鐘
+INTERVAL_SEC = 10 * 60  # 10 分鐘（台電更新週期）
 
 logging.basicConfig(
     level=logging.INFO,
