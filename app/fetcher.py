@@ -27,10 +27,21 @@ _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "Chrome/124.0.0.0 Safari/537.36"
     ),
     "Referer": "https://www.taipower.com.tw/",
-    "Accept": "application/json,text/plain,*/*",
+    "Origin": "https://www.taipower.com.tw",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"macOS"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
 }
 
 # 台電憑證鏈缺少 Subject Key Identifier,OpenSSL 3 嚴格檢查會擋下(curl 則放行)。
@@ -127,7 +138,8 @@ def fetch_and_store() -> bool:
     """抓取一次並寫入 DB。回傳是否成功寫入新資料(供日誌)。"""
     try:
         resp = httpx.get(
-            LOADPARA_URL, headers=_HEADERS, timeout=20, verify=_SSL_CTX
+            LOADPARA_URL, headers=_HEADERS, timeout=20, verify=_SSL_CTX,
+            follow_redirects=True,
         )
         resp.raise_for_status()
         data = resp.json()
