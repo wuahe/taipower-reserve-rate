@@ -67,17 +67,16 @@ def parse_roc_time(s: str) -> str | None:
 
 
 def _light_from_rate(reserve_rate: float, reserve_mw: float) -> str:
-    """依台電供電警戒標準推估燈號(輔助用)。
+    """依台電供電警戒標準推估燈號。
 
-    綠燈 >=10%;黃燈 6%~10%;橘燈 備轉容量 <90萬瓩(900MW);
-    紅燈 備轉容量 <50萬瓩(500MW)。MW 門檻優先於百分比。
+    注意:reserve_mw 為台電原始單位「萬瓩」(1 萬瓩 = 10 MW)。
+    台電門檻:紅燈 備轉容量 <50萬瓩;橘燈 <90萬瓩;
+    黃燈 備轉容量率 6%~10%;綠燈 >=10%。MW 門檻優先於百分比。
     """
-    if reserve_mw < 500:
+    if reserve_mw < 50:    # <50 萬瓩 = <500 MW
         return "R"
-    if reserve_mw < 900:
+    if reserve_mw < 90:    # <90 萬瓩 = <900 MW
         return "O"
-    if reserve_rate < 6:
-        return "Y"
     if reserve_rate < 10:
         return "Y"
     return "G"

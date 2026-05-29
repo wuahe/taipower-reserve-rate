@@ -88,14 +88,24 @@ function setLight(code) {
   document.getElementById("lightText").textContent = l.text;
 }
 
+// 依當下數據計算燈號(不依賴 DB 存值，重整即正確)
+// reserve_mw 為萬瓩：紅燈<50萬瓩、橘燈<90萬瓩、黃燈備轉率<10%、否則綠燈
+function calcLight(reserveRate, reserveWan) {
+  if (reserveWan < 50) return "R";
+  if (reserveWan < 90) return "O";
+  if (reserveRate < 10) return "Y";
+  return "G";
+}
+
 function updateCards(p) {
   if (!p) return;
   // 台電原始單位為萬瓩，×10 換算成 MW 顯示
+  const reserveWan = p.supply_mw - p.load_mw;
   document.getElementById("cRate").textContent = fmt(p.reserve_rate, 2);
   document.getElementById("cLoad").textContent = fmt(p.load_mw * 10);
   document.getElementById("cSupply").textContent = fmt(p.supply_mw * 10);
-  document.getElementById("cReserve").textContent = fmt((p.supply_mw - p.load_mw) * 10);
-  if (p.light) setLight(p.light);
+  document.getElementById("cReserve").textContent = fmt(reserveWan * 10);
+  setLight(calcLight(p.reserve_rate, reserveWan));
 }
 
 function render(date, points) {
