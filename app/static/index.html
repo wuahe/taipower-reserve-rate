@@ -57,7 +57,7 @@
 </header>
 
 <div class="cards">
-  <div class="card"><div class="label">即時備轉容量率</div><div class="value"><span id="cRate">—</span><span class="unit">%</span></div></div>
+  <div class="card"><div class="label">供電餘裕率</div><div class="value"><span id="cRate">—</span><span class="unit">%</span></div></div>
   <div class="card"><div class="label">即時負載</div><div class="value"><span id="cLoad">—</span><span class="unit">MW</span></div></div>
   <div class="card"><div class="label">供電能力</div><div class="value"><span id="cSupply">—</span><span class="unit">MW</span></div></div>
   <div class="card"><div class="label">備轉容量</div><div class="value"><span id="cReserve">—</span><span class="unit">MW</span></div></div>
@@ -101,7 +101,9 @@ function updateCards(p) {
   if (!p) return;
   // 台電原始單位為萬瓩，×10 換算成 MW 顯示
   const reserveWan = p.supply_mw - p.load_mw;
-  document.getElementById("cRate").textContent = fmt(p.reserve_rate, 2);
+  // 供電餘裕率 = (供電能力 − 負載) / 供電能力 = 1 − 使用率(供電還剩幾成沒用到)
+  const marginRate = p.supply_mw ? reserveWan / p.supply_mw * 100 : 0;
+  document.getElementById("cRate").textContent = fmt(marginRate, 2);
   document.getElementById("cLoad").textContent = fmt(p.load_mw * 10);
   document.getElementById("cSupply").textContent = fmt(p.supply_mw * 10);
   document.getElementById("cReserve").textContent = fmt(reserveWan * 10);
@@ -115,7 +117,8 @@ function render(date, points) {
     return;
   }
   const t = points.map(p => p.ts.slice(11));      // HH:MM
-  const rate = points.map(p => p.reserve_rate);
+  // 供電餘裕率 = (供電 − 負載) / 供電 × 100(每點即時計算)
+  const rate = points.map(p => p.supply_mw ? (p.supply_mw - p.load_mw) / p.supply_mw * 100 : 0);
   // 台電原始資料單位為「萬瓩」(1 萬瓩 = 10 MW)，×10 換算成 MW
   const load = points.map(p => p.load_mw * 10);
   const supply = points.map(p => p.supply_mw * 10);
@@ -123,18 +126,16 @@ function render(date, points) {
   chart.setOption({
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
-    legend: { data: ["備轉容量率", "即時負載", "供電能力"], textStyle: { color: "#e6edf3" }, top: 6 },
+    legend: { data: ["供電餘裕率", "即時負載", "供電能力"], textStyle: { color: "#e6edf3" }, top: 6 },
     grid: { left: 56, right: 64, top: 48, bottom: 40 },
     xAxis: { type: "category", data: t, boundaryGap: false, axisLabel: { color: "#8b98a5" } },
     yAxis: [
-      { type: "value", name: "備轉率 %", position: "left", axisLabel: { color: "#8b98a5", formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222b34" } } },
+      { type: "value", name: "餘裕率 %", position: "left", axisLabel: { color: "#8b98a5", formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222b34" } } },
       { type: "value", name: "MW", position: "right", axisLabel: { color: "#8b98a5" }, splitLine: { show: false } },
     ],
     series: [
-      { name: "備轉容量率", type: "line", yAxisIndex: 0, data: rate, smooth: true, symbol: "none",
-        lineStyle: { width: 3, color: "#4ea1ff" }, areaStyle: { color: "rgba(78,161,255,0.12)" },
-        markLine: { silent: true, symbol: "none", lineStyle: { color: "#f1c40f", type: "dashed" },
-          data: [{ yAxis: 10, label: { formatter: "10% 黃燈線", color: "#f1c40f" } }] } },
+      { name: "供電餘裕率", type: "line", yAxisIndex: 0, data: rate, smooth: true, symbol: "none",
+        lineStyle: { width: 3, color: "#4ea1ff" }, areaStyle: { color: "rgba(78,161,255,0.12)" } },
       { name: "即時負載", type: "line", yAxisIndex: 1, data: load, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#e67e22" } },
       { name: "供電能力", type: "line", yAxisIndex: 1, data: supply, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#2ecc71" } },
     ],
