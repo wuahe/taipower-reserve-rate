@@ -3,125 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台電備轉容量率 · 全日曲線</title>
+<title>台電供電餘裕率 · 全日曲線</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
   :root {
-    --bg:      #eef2f8;
-    --panel:   #ffffff;
-    --panel2:  #f6f8fc;
-    --border:  #dde4ee;
-    --border2: #c5cfde;
-    --text:    #16202f;   /* 深色高對比主文字 */
-    --text2:   #2c3a4f;
-    --muted:   #5d6b80;   /* 次要文字，仍清楚可讀 */
-    --accent:  #0d9488;   /* 深青 - 餘裕率 / 主強調 */
-    --load:    #2f6fed;   /* 藍 - 負載 */
-    --supply:  #c9851a;   /* 琥珀 - 供電 */
-    --g:#1f9d52; --y:#caa200; --o:#e0781c; --r:#e23b58;
+    --bg:      #071524;
+    --panel:   #0f2438;
+    --panel2:  #0d1f31;
+    --border:  #20405e;
+    --text:    #eef4fb;   /* 高對比白字 */
+    --muted:   #93a8c2;
+    --accent:  #5b9bf5;   /* 藍 - 餘裕率線 */
+    --load:    #34d399;   /* 綠 - 負載 */
+    --supply:  #e8c34a;   /* 黃 - 供電 */
+    --g:#2dd4a7; --y:#e8c34a; --o:#ff9e57; --r:#ff6b81;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-font-smoothing: antialiased; }
   body {
     font-family: "IBM Plex Sans TC", -apple-system, "PingFang TC", sans-serif;
-    color: var(--text); min-height: 100vh; padding: 26px 24px 40px;
-    max-width: 1240px; margin: 0 auto; position: relative;
+    color: var(--text); min-height: 100vh; padding: 30px 28px 44px;
+    max-width: 1280px; margin: 0 auto; position: relative;
     background:
-      radial-gradient(900px 480px at 12% -8%, rgba(13,148,136,0.10), transparent 60%),
-      radial-gradient(800px 500px at 100% 0%, rgba(47,111,237,0.08), transparent 55%),
-      var(--bg);
+      radial-gradient(1100px 560px at 8% -12%, rgba(64,124,196,0.30), transparent 60%),
+      radial-gradient(900px 520px at 100% -6%, rgba(45,212,167,0.10), transparent 55%),
+      linear-gradient(180deg, #0a1b2c 0%, var(--bg) 55%, #050f1a 100%);
   }
   body::before {
     content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
     background-image:
-      linear-gradient(rgba(60,80,120,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(60,80,120,0.05) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 90%);
+      linear-gradient(rgba(120,160,210,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,160,210,0.04) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(ellipse 95% 70% at 50% 0%, #000 30%, transparent 92%);
   }
   body > * { position: relative; z-index: 1; }
 
-  header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 22px; }
-  .brand { display: flex; align-items: baseline; gap: 12px; }
-  h1 { font-size: 26px; font-weight: 700; letter-spacing: .5px; display: flex; align-items: center; gap: 10px; color: var(--text); }
-  .bolt { color: var(--accent); filter: drop-shadow(0 0 8px rgba(13,148,136,.5)); }
-  .sub { font-size: 12px; color: var(--muted); font-family: "IBM Plex Mono"; letter-spacing: .5px; }
-  .controls { display: flex; align-items: center; gap: 9px; margin-left: auto; flex-wrap: wrap; }
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; margin-bottom: 22px; }
+  .overline { font-family: "IBM Plex Mono"; font-size: 12px; letter-spacing: 3px; color: var(--accent);
+    font-weight: 600; margin-bottom: 4px; }
+  h1 { font-size: 38px; font-weight: 700; letter-spacing: 1px; line-height: 1; }
+  .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
   .pill {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
-    padding: 8px 15px; font-size: 12.5px; color: var(--text2); white-space: nowrap;
-    display: inline-flex; align-items: center; gap: 8px; transition: .2s;
-    box-shadow: 0 1px 2px rgba(20,40,80,.04);
+    background: rgba(15,36,56,.7); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 16px; font-size: 13px; color: var(--text); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 8px; transition: .2s; backdrop-filter: blur(6px);
   }
   a.pill { color: var(--accent); text-decoration: none; font-weight: 600; }
-  a.pill:hover, button.pill:hover { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(13,148,136,.25); }
+  a.pill:hover, button.pill:hover { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(91,155,245,.3); }
   button.pill { cursor: pointer; font-family: inherit; }
   .datebox { color: var(--muted); }
-  .datebox input { background: transparent; border: none; color: var(--text); font-size: 12.5px;
-    font-family: "IBM Plex Mono"; cursor: pointer; }
-  #status .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
+  .datebox input { background: transparent; border: none; color: var(--text); font-size: 13px;
+    font-family: "IBM Plex Mono"; color-scheme: dark; cursor: pointer; }
+  #status .dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 8px currentColor; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  #refreshBtn { font-size: 15px; padding: 7px 13px; color: var(--text2); }
+  #refreshBtn { font-size: 16px; padding: 9px 14px; color: var(--accent); }
   #refreshBtn:active { transform: rotate(180deg); }
 
-  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
   .card {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px;
-    box-shadow: 0 2px 10px rgba(20,40,80,.05);
-    transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s;
-    animation: rise .5s both;
+    background: linear-gradient(160deg, var(--panel), var(--panel2));
+    border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px;
+    transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s; animation: rise .5s both;
   }
-  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 22px rgba(20,40,80,.10); }
+  .card:hover { transform: translateY(-3px); }
   .card.primary {
-    border-color: color-mix(in srgb, var(--lc, var(--accent)) 60%, var(--border));
-    box-shadow: 0 4px 22px -6px color-mix(in srgb, var(--lc, var(--accent)) 45%, transparent);
-    background: linear-gradient(160deg, color-mix(in srgb, var(--lc, var(--accent)) 10%, #fff), #fff);
+    border: 1px solid color-mix(in srgb, var(--lc, var(--accent)) 55%, var(--border));
+    border-left: 4px solid var(--lc, var(--accent));
+    background: linear-gradient(150deg, color-mix(in srgb, var(--lc, var(--accent)) 26%, var(--panel)), var(--panel2));
+    box-shadow: 0 6px 30px -10px color-mix(in srgb, var(--lc, var(--accent)) 50%, transparent);
   }
-  .card .label { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; letter-spacing: .3px;
-    display: flex; align-items: center; gap: 7px; font-weight: 500; }
-  .card.primary .label::before { content:""; width:7px; height:7px; border-radius:50%;
-    background: var(--lc, var(--accent)); box-shadow: 0 0 8px var(--lc, var(--accent)); }
-  .card .value { font-family: "IBM Plex Mono"; font-size: 32px; font-weight: 600; line-height: 1;
+  .card .label { font-size: 13px; color: var(--muted); margin-bottom: 12px; letter-spacing: .3px; font-weight: 500; }
+  .card.primary .label { color: #d6f2ec; }
+  .card .value { font-family: "IBM Plex Mono"; font-size: 34px; font-weight: 600; line-height: 1;
     font-variant-numeric: tabular-nums; letter-spacing: -1px; color: var(--text); }
-  .card.primary .value { color: var(--lc, var(--accent)); }
-  .card .unit { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 5px; letter-spacing: 0; }
+  .card .unit { font-size: 22px; font-weight: 500; margin-left: 4px; color: var(--text); }
 
-  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
-  .stat { background: var(--panel2); border: 1px solid var(--border); border-radius: 12px;
-    padding: 12px 16px; animation: rise .5s both; }
-  .stat .label { font-size: 11.5px; color: var(--muted); margin-bottom: 7px; letter-spacing: .3px; font-weight: 500; }
-  .stat .value { font-family: "IBM Plex Mono"; font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
-  .stat .unit { font-size: 12px; color: var(--muted); margin-left: 2px; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 18px; }
+  .stat { background: rgba(13,31,49,.7); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 18px; animation: rise .5s both; }
+  .stat .label { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; letter-spacing: .3px; }
+  .stat .value { font-family: "IBM Plex Mono"; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat .unit { font-size: 14px; color: var(--muted); margin-left: 2px; }
 
-  .chartwrap { background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
-    padding: 14px 10px 8px; box-shadow: 0 2px 14px rgba(20,40,80,.05); animation: rise .6s both; }
-  #chart { height: 480px; }
-  .updated { font-size: 11.5px; color: var(--muted); margin-top: 12px; text-align: right;
-    font-family: "IBM Plex Mono"; letter-spacing: .3px; }
+  .chartwrap { position: relative; background: linear-gradient(160deg, var(--panel), var(--panel2));
+    border: 1px solid var(--border); border-radius: 18px; padding: 16px 12px 10px; animation: rise .6s both; }
+  .chart-status { position: absolute; top: 18px; right: 22px; font-size: 12.5px; color: var(--muted);
+    font-family: "IBM Plex Mono"; z-index: 2; }
+  #chart { height: 500px; }
 
   @keyframes rise { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
   .cards .card:nth-child(2){animation-delay:.05s} .cards .card:nth-child(3){animation-delay:.1s} .cards .card:nth-child(4){animation-delay:.15s}
   .stats .stat:nth-child(2){animation-delay:.05s} .stats .stat:nth-child(3){animation-delay:.1s} .stats .stat:nth-child(4){animation-delay:.15s} .stats .stat:nth-child(5){animation-delay:.2s}
 
-  @media (max-width: 780px) {
+  @media (max-width: 800px) {
     .cards { grid-template-columns: repeat(2,1fr); } .stats { grid-template-columns: repeat(3,1fr); }
-    h1 { font-size: 21px; } .controls { width: 100%; }
+    h1 { font-size: 28px; } .controls { width: 100%; } .chart-status { display:none; }
   }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">
-    <h1><span class="bolt">⚡</span>台電備轉容量率</h1>
-    <span class="sub">REAL-TIME RESERVE MARGIN</span>
+  <div>
+    <div class="overline">TAIPOWER RESERVE</div>
+    <h1>台電供電餘裕率</h1>
   </div>
   <div class="controls">
     <a class="pill" href="https://www.taipower.com.tw/2289/2363/2367/2368/10262/normalPost" target="_blank" rel="noopener">台電今日電力資訊 ↗</a>
     <span class="pill datebox">日期 <input type="date" id="datePicker"></span>
-    <span class="pill" id="status"><span id="statusDot" class="dot" style="color:#1f9d52;background:#1f9d52"></span><span id="statusText">—</span></span>
+    <span class="pill" id="status"><span id="statusDot" class="dot" style="color:#2dd4a7;background:#2dd4a7"></span><span id="statusText">—</span></span>
     <button class="pill" id="refreshBtn" title="重新整理">↻</button>
   </div>
 </header>
@@ -134,23 +127,25 @@
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="label">當日最高</div><div class="value"><span id="sMax">—</span><span class="unit">%</span></div></div>
-  <div class="stat"><div class="label">當日最低</div><div class="value"><span id="sMin">—</span><span class="unit">%</span></div></div>
-  <div class="stat"><div class="label">當日平均</div><div class="value"><span id="sAvg">—</span><span class="unit">%</span></div></div>
-  <div class="stat"><div class="label">資料筆數</div><div class="value" id="sCount">—</div></div>
-  <div class="stat"><div class="label">最後更新</div><div class="value" style="font-size:15px" id="sLast">—</div></div>
+  <div class="stat"><div class="label">最高</div><div class="value"><span id="sMax">—</span><span class="unit">%</span></div></div>
+  <div class="stat"><div class="label">最低</div><div class="value"><span id="sMin">—</span><span class="unit">%</span></div></div>
+  <div class="stat"><div class="label">平均</div><div class="value"><span id="sAvg">—</span><span class="unit">%</span></div></div>
+  <div class="stat"><div class="label">筆數</div><div class="value" id="sCount">—</div></div>
+  <div class="stat"><div class="label">最後更新</div><div class="value" style="font-size:17px" id="sLast">—</div></div>
 </div>
 
-<div class="chartwrap"><div id="chart"></div></div>
-<div class="updated" id="updated"></div>
+<div class="chartwrap">
+  <div class="chart-status" id="chartStatus"></div>
+  <div id="chart"></div>
+</div>
 
 <script>
 const FONT = "IBM Plex Mono, monospace";
 const LIGHT = {
-  G: { color: "#1f9d52", text: "綠燈 · 供電充裕" },
-  Y: { color: "#caa200", text: "黃燈 · 供電吃緊" },
-  O: { color: "#e0781c", text: "橘燈 · 供電警戒" },
-  R: { color: "#e23b58", text: "紅燈 · 限電準備" },
+  G: { color: "#2dd4a7", text: "綠燈 · 供電充裕" },
+  Y: { color: "#e8c34a", text: "黃燈 · 供電吃緊" },
+  O: { color: "#ff9e57", text: "橘燈 · 供電警戒" },
+  R: { color: "#ff6b81", text: "紅燈 · 限電準備" },
 };
 const chart = echarts.init(document.getElementById("chart"), null, { renderer: "canvas" });
 window.addEventListener("resize", () => chart.resize());
@@ -158,18 +153,22 @@ window.addEventListener("resize", () => chart.resize());
 const fmt = (n, d = 0) => n == null ? "—" : Number(n).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 const margin = p => p.supply_mw ? (p.supply_mw - p.load_mw) / p.supply_mw * 100 : 0;
 const calcLight = m => m < 3 ? "R" : m < 6 ? "O" : m < 10 ? "Y" : "G";
+const stamp = ts => ts.slice(5, 16).replace("-", "/").replace("T", " ");
 
-function applyLight(m) {
-  document.getElementById("rateCard").style.setProperty("--lc", LIGHT[calcLight(m)].color);
-}
-function setStatus(latestTs) {
-  const dot = document.getElementById("statusDot"), txt = document.getElementById("statusText");
-  if (!latestTs) { dot.style.color = dot.style.background = "#9aa7bd"; txt.textContent = "尚無資料"; return; }
+function applyLight(m) { document.getElementById("rateCard").style.setProperty("--lc", LIGHT[calcLight(m)].color); }
+function statusText(latestTs) {
+  if (!latestTs) return { ok: false, txt: "尚無資料" };
   const age = (Date.now() - new Date(latestTs.replace(" ", "T")).getTime()) / 60000;
   const ok = age < 25;
-  const c = ok ? "#1f9d52" : "#e0781c";
+  return { ok, txt: (ok ? "正常" : "資料延遲") + "，最近抓取 " + stamp(latestTs) };
+}
+function setStatus(latestTs) {
+  const { ok, txt } = statusText(latestTs);
+  const dot = document.getElementById("statusDot");
+  const c = !latestTs ? "#93a8c2" : ok ? "#2dd4a7" : "#ff9e57";
   dot.style.color = dot.style.background = c;
-  txt.textContent = (ok ? "正常" : "資料延遲") + " · " + latestTs.slice(5, 16).replace("-", "/").replace("T", " ");
+  document.getElementById("statusText").textContent = txt;
+  document.getElementById("chartStatus").textContent = txt;
 }
 function updateCards(p) {
   if (!p) return;
@@ -186,8 +185,7 @@ function updateStats(points) {
     const r = points.map(margin);
     o.sMax = fmt(Math.max(...r), 2); o.sMin = fmt(Math.min(...r), 2);
     o.sAvg = fmt(r.reduce((a, b) => a + b, 0) / r.length, 2);
-    o.sCount = points.length;
-    o.sLast = points[points.length - 1].ts.slice(5, 16).replace("-", "/").replace("T", " ");
+    o.sCount = points.length; o.sLast = stamp(points[points.length - 1].ts);
   }
   for (const k in o) document.getElementById(k).textContent = o[k];
 }
@@ -197,49 +195,51 @@ function render(date, points) {
   if (!points.length) {
     chart.clear();
     chart.setOption({ title: { text: "此日尚無資料", left: "center", top: "center",
-      textStyle: { color: "#5d6b80", fontFamily: FONT, fontSize: 14 } } });
+      textStyle: { color: "#93a8c2", fontFamily: FONT, fontSize: 14 } } });
+    document.getElementById("chartStatus").textContent = "";
     return;
   }
   const t = points.map(p => p.ts.slice(11));
   const rate = points.map(p => +margin(p).toFixed(2));
   const load = points.map(p => p.load_mw * 10);
   const supply = points.map(p => p.supply_mw * 10);
-  const axis = { color: "#5d6b80", fontFamily: FONT, fontSize: 11 };
-  const axisName = { color: "#5d6b80", fontFamily: FONT, fontSize: 11 };
+  const axis = { color: "#93a8c2", fontFamily: FONT, fontSize: 11 };
 
   chart.setOption({
     backgroundColor: "transparent",
     textStyle: { fontFamily: FONT },
-    tooltip: { trigger: "axis", axisPointer: { type: "cross", lineStyle: { color: "#b8c2d4" } },
-      backgroundColor: "rgba(255,255,255,.97)", borderColor: "#dde4ee", borderWidth: 1,
-      textStyle: { color: "#16202f", fontFamily: FONT, fontSize: 12 },
-      extraCssText: "box-shadow:0 6px 20px rgba(20,40,80,.14);border-radius:10px;",
+    tooltip: { trigger: "axis", axisPointer: { type: "cross", lineStyle: { color: "#3a5a7e", type: "dashed" } },
+      backgroundColor: "rgba(8,21,36,.95)", borderColor: "#20405e", borderWidth: 1,
+      textStyle: { color: "#eef4fb", fontFamily: FONT, fontSize: 12 },
+      extraCssText: "border-radius:10px;",
       formatter: (ps) => {
-        let s = `<span style="color:#5d6b80">${ps[0].axisValue}</span><br/>`;
+        let s = `<span style="color:#93a8c2">${ps[0].axisValue}</span><br/>`;
         ps.forEach(p => {
           const unit = p.seriesName === "供電餘裕率" ? "%" : " MW";
-          s += `${p.marker}${p.seriesName} <b style="float:right;margin-left:14px">${Number(p.value).toLocaleString("en-US",{maximumFractionDigits:2})}${unit}</b><br/>`;
+          s += `${p.marker}${p.seriesName} <b style="float:right;margin-left:16px">${Number(p.value).toLocaleString("en-US",{maximumFractionDigits:2})}${unit}</b><br/>`;
         });
         return s;
       } },
     legend: { data: ["供電餘裕率", "即時負載", "供電能力"], top: 8, left: "center",
-      textStyle: { color: "#2c3a4f", fontFamily: FONT, fontSize: 12 }, itemWidth: 18, itemHeight: 3, itemGap: 18 },
-    grid: { left: 60, right: 66, top: 50, bottom: 36 },
+      icon: "circle", textStyle: { color: "#cdd9ea", fontFamily: FONT, fontSize: 12.5 }, itemGap: 22 },
+    grid: { left: 62, right: 70, top: 52, bottom: 38 },
     xAxis: { type: "category", data: t, boundaryGap: false,
-      axisLabel: axis, axisLine: { lineStyle: { color: "#d3dae6" } }, axisTick: { show: false } },
+      axisLabel: axis, axisLine: { lineStyle: { color: "#20405e" } }, axisTick: { show: false } },
     yAxis: [
-      { type: "value", name: "餘裕率 %", nameTextStyle: axisName, position: "left",
-        axisLabel: { ...axis, formatter: "{value}%" }, splitLine: { lineStyle: { color: "#eef1f7" } } },
-      { type: "value", name: "MW", nameTextStyle: axisName, position: "right",
+      { type: "value", name: "餘裕率 %", nameTextStyle: axis, position: "left",
+        axisLabel: { ...axis, formatter: "{value}%" }, splitLine: { lineStyle: { color: "rgba(32,64,94,.45)" } } },
+      { type: "value", name: "MW", nameTextStyle: axis, position: "right",
         axisLabel: axis, splitLine: { show: false } },
     ],
     series: [
       { name: "供電餘裕率", type: "line", yAxisIndex: 0, data: rate, smooth: true, symbol: "none",
-        lineStyle: { width: 3, color: "#0d9488" },
+        lineStyle: { width: 3, color: "#5b9bf5", shadowColor: "rgba(91,155,245,.45)", shadowBlur: 10 },
         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: "rgba(13,148,136,0.22)" }, { offset: 1, color: "rgba(13,148,136,0.01)" }]) } },
-      { name: "即時負載", type: "line", yAxisIndex: 1, data: load, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#2f6fed" } },
-      { name: "供電能力", type: "line", yAxisIndex: 1, data: supply, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#c9851a" } },
+          { offset: 0, color: "rgba(91,155,245,0.30)" }, { offset: 1, color: "rgba(91,155,245,0.01)" }]) },
+        markLine: { silent: true, symbol: "none", lineStyle: { color: "#e8c34a", type: "dashed", opacity: .7 },
+          data: [{ yAxis: 10, label: { formatter: "10% 黃燈線", color: "#e8c34a", fontFamily: FONT, fontSize: 11, position: "insideEndTop" } }] } },
+      { name: "即時負載", type: "line", yAxisIndex: 1, data: load, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#34d399" } },
+      { name: "供電能力", type: "line", yAxisIndex: 1, data: supply, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#e8c34a" } },
     ],
   }, true);
 
@@ -250,7 +250,6 @@ function render(date, points) {
 async function loadDate(date) {
   const j = await (await fetch(`/api/history?date=${date}`)).json();
   render(j.date, j.points);
-  document.getElementById("updated").textContent = "畫面更新 " + new Date().toLocaleTimeString("zh-TW");
 }
 async function init() {
   const j = await (await fetch("/api/dates")).json();
