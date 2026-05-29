@@ -124,15 +124,16 @@ function render(date, points) {
     return;
   }
   const t = points.map(p => p.ts.slice(11));      // HH:MM
-  // 供電餘裕率 = (供電 − 負載) / 供電 × 100(每點即時計算)
-  const rate = points.map(p => p.supply_mw ? (p.supply_mw - p.load_mw) / p.supply_mw * 100 : 0);
+  // 供電餘裕率 = (供電 − 負載) / 供電 × 100(每點即時計算，四捨五入 2 位)
+  const rate = points.map(p => p.supply_mw ? +((p.supply_mw - p.load_mw) / p.supply_mw * 100).toFixed(2) : 0);
   // 台電原始資料單位為「萬瓩」(1 萬瓩 = 10 MW)，×10 換算成 MW
   const load = points.map(p => p.load_mw * 10);
   const supply = points.map(p => p.supply_mw * 10);
 
   chart.setOption({
     backgroundColor: "transparent",
-    tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
+    tooltip: { trigger: "axis", axisPointer: { type: "cross" },
+      valueFormatter: (v) => v == null ? "—" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 }) },
     legend: { data: ["供電餘裕率", "即時負載", "供電能力"], textStyle: { color: "#e6edf3" }, top: 6 },
     grid: { left: 56, right: 64, top: 48, bottom: 40 },
     xAxis: { type: "category", data: t, boundaryGap: false, axisLabel: { color: "#8b98a5" } },
