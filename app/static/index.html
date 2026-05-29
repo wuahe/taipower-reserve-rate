@@ -57,10 +57,10 @@
 </header>
 
 <div class="cards">
-  <div class="card"><div class="label">最新備轉容量率</div><div class="value"><span id="cRate">—</span><span class="unit">%</span></div></div>
+  <div class="card"><div class="label">即時備轉容量率</div><div class="value"><span id="cRate">—</span><span class="unit">%</span></div></div>
+  <div class="card"><div class="label">今日預估尖峰</div><div class="value"><span id="cFore">—</span><span class="unit">%</span></div></div>
   <div class="card"><div class="label">即時負載</div><div class="value"><span id="cLoad">—</span><span class="unit">MW</span></div></div>
   <div class="card"><div class="label">供電能力</div><div class="value"><span id="cSupply">—</span><span class="unit">MW</span></div></div>
-  <div class="card"><div class="label">備轉容量</div><div class="value"><span id="cReserve">—</span><span class="unit">MW</span></div></div>
 </div>
 
 <div id="chart"></div>
@@ -91,9 +91,9 @@ function setLight(code) {
 function updateCards(p) {
   if (!p) return;
   document.getElementById("cRate").textContent = fmt(p.reserve_rate, 2);
+  document.getElementById("cFore").textContent = p.fore_peak_resv_rate != null ? fmt(p.fore_peak_resv_rate, 2) : "—";
   document.getElementById("cLoad").textContent = fmt(p.load_mw);
   document.getElementById("cSupply").textContent = fmt(p.supply_mw);
-  document.getElementById("cReserve").textContent = fmt(p.supply_mw - p.load_mw);
   if (p.light) setLight(p.light);
 }
 

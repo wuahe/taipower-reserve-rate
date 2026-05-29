@@ -118,10 +118,14 @@ def parse_loadpara(data: dict) -> dict | None:
     reserve_mw = supply - load
     reserve_rate = reserve_mw / load * 100 if load else 0.0
 
-    # 燈號:優先採台電當日 indicator,否則用備轉率推估
-    light = flat.get("fore_peak_resv_indicator") or _light_from_rate(
-        reserve_rate, reserve_mw
-    )
+    # 燈號:依即時備轉率計算(與卡片數字一致)
+    light = _light_from_rate(reserve_rate, reserve_mw)
+
+    # 台電官方今日預估尖峰備轉容量率(另存供前端顯示用)
+    try:
+        fore_peak_resv_rate = float(flat["fore_peak_resv_rate"])
+    except (KeyError, ValueError):
+        fore_peak_resv_rate = None
 
     return {
         "ts": ts,
@@ -132,6 +136,7 @@ def parse_loadpara(data: dict) -> dict | None:
         "supply_mw_alt": round(supply_b, 1) if supply_b is not None else None,
         "util_rate": util,
         "light": light,
+        "fore_peak_resv_rate": fore_peak_resv_rate,
         "raw": json.dumps(data, ensure_ascii=False),
     }
 

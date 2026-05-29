@@ -53,21 +53,28 @@ def init_db() -> None:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS readings (
-                ts            TEXT PRIMARY KEY,  -- ISO 時間,例 2026-05-29T16:00
-                date          TEXT NOT NULL,     -- YYYY-MM-DD
-                reserve_rate  REAL,              -- 備轉容量率 %
-                load_mw       REAL,              -- 即時負載 MW
-                supply_mw     REAL,              -- 供電能力 MW(主值)
-                supply_mw_alt REAL,              -- 另一算法供電能力(備查)
-                util_rate     REAL,              -- 即時用電率 %
-                light         TEXT,              -- 燈號 G/Y/O/R
-                raw           TEXT               -- 原始 JSON
+                ts                  TEXT PRIMARY KEY,  -- ISO 時間,例 2026-05-29T16:00
+                date                TEXT NOT NULL,     -- YYYY-MM-DD
+                reserve_rate        REAL,              -- 即時備轉容量率 %
+                load_mw             REAL,              -- 即時負載 MW
+                supply_mw           REAL,              -- 供電能力 MW(主值)
+                supply_mw_alt       REAL,              -- 另一算法供電能力(備查)
+                util_rate           REAL,              -- 即時用電率 %
+                light               TEXT,              -- 燈號 G/Y/O/R(依即時備轉率)
+                fore_peak_resv_rate REAL,              -- 台電官方今日預估尖峰備轉率 %
+                raw                 TEXT               -- 原始 JSON
             )
             """
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_readings_date ON readings(date)"
         )
+        # 向前相容：舊 DB 缺少新欄位時自動補上
+        try:
+            conn.execute("ALTER TABLE readings ADD COLUMN fore_peak_resv_rate REAL")
+            logger.info("DB 遷移：新增 fore_peak_resv_rate 欄位")
+        except Exception:
+            pass  # 欄位已存在，忽略
     logger.info("DB 已初始化:%s", DB_PATH)
 
 
@@ -75,17 +82,17 @@ def insert_reading(reading: dict) -> bool:
     """寫入一筆(同 ts 自動去重)。回傳是否實際新增。
 
     reading 需含 keys: ts, date, reserve_rate, load_mw, supply_mw,
-    supply_mw_alt, util_rate, light, raw
+    supply_mw_alt, util_rate, light, fore_peak_resv_rate, raw
     """
     with _connect() as conn:
         cur = conn.execute(
             """
             INSERT OR IGNORE INTO readings
                 (ts, date, reserve_rate, load_mw, supply_mw,
-                 supply_mw_alt, util_rate, light, raw)
+                 supply_mw_alt, util_rate, light, fore_peak_resv_rate, raw)
             VALUES
                 (:ts, :date, :reserve_rate, :load_mw, :supply_mw,
-                 :supply_mw_alt, :util_rate, :light, :raw)
+                 :supply_mw_alt, :util_rate, :light, :fore_peak_resv_rate, :raw)
             """,
             reading,
         )
@@ -97,7 +104,8 @@ def get_history(date: str) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
             "SELECT ts, reserve_rate, load_mw, supply_mw, supply_mw_alt, "
-            "util_rate, light FROM readings WHERE date = ? ORDER BY ts",
+            "util_rate, light, fore_peak_resv_rate "
+            "FROM readings WHERE date = ? ORDER BY ts",
             (date,),
         ).fetchall()
     return [dict(r) for r in rows]
@@ -117,7 +125,7 @@ def get_latest() -> Optional[dict]:
     with _connect() as conn:
         row = conn.execute(
             "SELECT ts, date, reserve_rate, load_mw, supply_mw, "
-            "supply_mw_alt, util_rate, light FROM readings "
-            "ORDER BY ts DESC LIMIT 1"
+            "supply_mw_alt, util_rate, light, fore_peak_resv_rate "
+            "FROM readings ORDER BY ts DESC LIMIT 1"
         ).fetchone()
     return dict(row) if row else None
