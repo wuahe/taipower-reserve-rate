@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台電備轉容量率 · 全日曲線</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2129;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --border: #2a323c;
+    --accent: #4ea1ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: 16px; max-width: 1100px; margin: 0 auto;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 20px; font-weight: 600; }
+  .controls { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  select {
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 12px; font-size: 14px; cursor: pointer;
+  }
+  .light-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .card .value { font-size: 24px; font-weight: 700; }
+  .card .unit { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+  #chart { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; height: 460px; padding: 8px; }
+  .updated { font-size: 12px; color: var(--muted); margin-top: 10px; text-align: right; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ 台電備轉容量率</h1>
+  <div class="controls">
+    <span class="light-badge"><span id="lightDot" class="dot" style="color:#888;background:#888"></span><span id="lightText">—</span></span>
+    <select id="dateSelect"></select>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="label">最新備轉容量率</div><div class="value"><span id="cRate">—</span><span class="unit">%</span></div></div>
+  <div class="card"><div class="label">即時負載</div><div class="value"><span id="cLoad">—</span><span class="unit">MW</span></div></div>
+  <div class="card"><div class="label">供電能力</div><div class="value"><span id="cSupply">—</span><span class="unit">MW</span></div></div>
+  <div class="card"><div class="label">備轉容量</div><div class="value"><span id="cReserve">—</span><span class="unit">MW</span></div></div>
+</div>
+
+<div id="chart"></div>
+<div class="updated" id="updated"></div>
+
+<script>
+const LIGHT = {
+  G: { color: "#2ecc71", text: "綠燈 · 供電充裕" },
+  Y: { color: "#f1c40f", text: "黃燈 · 供電吃緊" },
+  O: { color: "#e67e22", text: "橘燈 · 供電警戒" },
+  R: { color: "#e74c3c", text: "紅燈 · 限電準備" },
+};
+
+const chart = echarts.init(document.getElementById("chart"), "dark");
+window.addEventListener("resize", () => chart.resize());
+
+function fmt(n, d = 0) {
+  return n == null ? "—" : Number(n).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+}
+
+function setLight(code) {
+  const l = LIGHT[code] || { color: "#888", text: "—" };
+  const dot = document.getElementById("lightDot");
+  dot.style.color = l.color; dot.style.background = l.color;
+  document.getElementById("lightText").textContent = l.text;
+}
+
+function updateCards(p) {
+  if (!p) return;
+  document.getElementById("cRate").textContent = fmt(p.reserve_rate, 2);
+  document.getElementById("cLoad").textContent = fmt(p.load_mw);
+  document.getElementById("cSupply").textContent = fmt(p.supply_mw);
+  document.getElementById("cReserve").textContent = fmt(p.supply_mw - p.load_mw);
+  if (p.light) setLight(p.light);
+}
+
+function render(date, points) {
+  if (!points.length) {
+    chart.clear();
+    chart.setOption({ title: { text: "此日尚無資料", left: "center", top: "center", textStyle: { color: "#8b98a5" } } });
+    return;
+  }
+  const t = points.map(p => p.ts.slice(11));      // HH:MM
+  const rate = points.map(p => p.reserve_rate);
+  const load = points.map(p => p.load_mw);
+  const supply = points.map(p => p.supply_mw);
+
+  chart.setOption({
+    backgroundColor: "transparent",
+    tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
+    legend: { data: ["備轉容量率", "即時負載", "供電能力"], textStyle: { color: "#e6edf3" }, top: 6 },
+    grid: { left: 56, right: 64, top: 48, bottom: 40 },
+    xAxis: { type: "category", data: t, boundaryGap: false, axisLabel: { color: "#8b98a5" } },
+    yAxis: [
+      { type: "value", name: "備轉率 %", position: "left", axisLabel: { color: "#8b98a5", formatter: "{value}%" }, splitLine: { lineStyle: { color: "#222b34" } } },
+      { type: "value", name: "MW", position: "right", axisLabel: { color: "#8b98a5" }, splitLine: { show: false } },
+    ],
+    series: [
+      { name: "備轉容量率", type: "line", yAxisIndex: 0, data: rate, smooth: true, symbol: "none",
+        lineStyle: { width: 3, color: "#4ea1ff" }, areaStyle: { color: "rgba(78,161,255,0.12)" },
+        markLine: { silent: true, symbol: "none", lineStyle: { color: "#f1c40f", type: "dashed" },
+          data: [{ yAxis: 10, label: { formatter: "10% 黃燈線", color: "#f1c40f" } }] } },
+      { name: "即時負載", type: "line", yAxisIndex: 1, data: load, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#e67e22" } },
+      { name: "供電能力", type: "line", yAxisIndex: 1, data: supply, smooth: true, symbol: "none", lineStyle: { width: 2, color: "#2ecc71" } },
+    ],
+  }, true);
+
+  updateCards(points[points.length - 1]);
+}
+
+let currentDate = null;
+
+async function loadDate(date) {
+  currentDate = date;
+  const r = await fetch(`/api/history?date=${date}`);
+  const j = await r.json();
+  render(j.date, j.points);
+  document.getElementById("updated").textContent =
+    "更新時間 " + new Date().toLocaleTimeString("zh-TW");
+}
+
+async function initDates() {
+  const r = await fetch("/api/dates");
+  const j = await r.json();
+  const sel = document.getElementById("dateSelect");
+  const dates = j.dates.length ? j.dates : [new Date().toISOString().slice(0, 10)];
+  sel.innerHTML = dates.map(d => `<option value="${d}">${d}</option>`).join("");
+  sel.onchange = () => loadDate(sel.value);
+  await loadDate(dates[0]);
+}
+
+// 每 5 分鐘:若看的是最新日期,重抓刷新尾端
+setInterval(() => {
+  const sel = document.getElementById("dateSelect");
+  if (sel.value === sel.options[0]?.value) loadDate(sel.value);
+}, 5 * 60 * 1000);
+
+initDates();
+</script>
+</body>
+</html>
