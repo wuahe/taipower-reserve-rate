@@ -133,7 +133,15 @@ function render(date, points) {
   chart.setOption({
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", axisPointer: { type: "cross" },
-      valueFormatter: (v) => v == null ? "—" : Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 }) },
+      formatter: (ps) => {
+        let s = ps[0].axisValue + "<br/>";
+        ps.forEach(p => {
+          const unit = p.seriesName === "供電餘裕率" ? "%" : " MW";
+          const v = Number(p.value).toLocaleString("en-US", { maximumFractionDigits: 2 });
+          s += `${p.marker}${p.seriesName}　<b>${v}${unit}</b><br/>`;
+        });
+        return s;
+      } },
     legend: { data: ["供電餘裕率", "即時負載", "供電能力"], textStyle: { color: "#e6edf3" }, top: 6 },
     grid: { left: 56, right: 64, top: 48, bottom: 40 },
     xAxis: { type: "category", data: t, boundaryGap: false, axisLabel: { color: "#8b98a5" } },
