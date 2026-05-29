@@ -88,12 +88,12 @@ function setLight(code) {
   document.getElementById("lightText").textContent = l.text;
 }
 
-// 依當下數據計算燈號(不依賴 DB 存值，重整即正確)
-// reserve_mw 為萬瓩：紅燈<50萬瓩、橘燈<90萬瓩、黃燈備轉率<10%、否則綠燈
-function calcLight(reserveRate, reserveWan) {
-  if (reserveWan < 50) return "R";
-  if (reserveWan < 90) return "O";
-  if (reserveRate < 10) return "Y";
+// 燈號依「供電餘裕率」判斷(跟畫面顯示的數字一致)：
+// 綠 ≥10%、黃 6~10%、橘 3~6%、紅 <3%
+function calcLight(marginRate) {
+  if (marginRate < 3) return "R";
+  if (marginRate < 6) return "O";
+  if (marginRate < 10) return "Y";
   return "G";
 }
 
@@ -107,7 +107,7 @@ function updateCards(p) {
   document.getElementById("cLoad").textContent = fmt(p.load_mw * 10);
   document.getElementById("cSupply").textContent = fmt(p.supply_mw * 10);
   document.getElementById("cReserve").textContent = fmt(reserveWan * 10);
-  setLight(calcLight(p.reserve_rate, reserveWan));
+  setLight(calcLight(marginRate));
 }
 
 function render(date, points) {
