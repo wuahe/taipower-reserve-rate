@@ -90,10 +90,11 @@ function setLight(code) {
 
 function updateCards(p) {
   if (!p) return;
+  // 台電原始單位為萬瓩，×10 換算成 MW 顯示
   document.getElementById("cRate").textContent = fmt(p.reserve_rate, 2);
-  document.getElementById("cLoad").textContent = fmt(p.load_mw);
-  document.getElementById("cSupply").textContent = fmt(p.supply_mw);
-  document.getElementById("cReserve").textContent = fmt(p.supply_mw - p.load_mw);
+  document.getElementById("cLoad").textContent = fmt(p.load_mw * 10);
+  document.getElementById("cSupply").textContent = fmt(p.supply_mw * 10);
+  document.getElementById("cReserve").textContent = fmt((p.supply_mw - p.load_mw) * 10);
   if (p.light) setLight(p.light);
 }
 
@@ -105,8 +106,9 @@ function render(date, points) {
   }
   const t = points.map(p => p.ts.slice(11));      // HH:MM
   const rate = points.map(p => p.reserve_rate);
-  const load = points.map(p => p.load_mw);
-  const supply = points.map(p => p.supply_mw);
+  // 台電原始資料單位為「萬瓩」(1 萬瓩 = 10 MW)，×10 換算成 MW
+  const load = points.map(p => p.load_mw * 10);
+  const supply = points.map(p => p.supply_mw * 10);
 
   chart.setOption({
     backgroundColor: "transparent",
