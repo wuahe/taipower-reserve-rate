@@ -62,8 +62,8 @@
         "method": "POST",
         "url": "https://taipower-reserve.zeabur.app/api/ingest",
         "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify($json) }}",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
         "options": {
           "timeout": 15000
         }
