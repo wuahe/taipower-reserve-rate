@@ -204,11 +204,11 @@ async function init() {
   const dates = j.dates.length ? j.dates : [today];
   const picker = document.getElementById("datePicker");
   picker.max = today;
-  picker.value = dates[0];
-  picker.min = dates[dates.length - 1];
+  picker.value = today;                                  // 每次打開強制跳到今天
+  picker.min = dates[dates.length - 1] < today ? dates[dates.length - 1] : today;
   picker.onchange = () => loadDate(picker.value);
   document.getElementById("refreshBtn").onclick = () => loadDate(picker.value);
-  await loadDate(picker.value);
+  await loadDate(today);
 }
 
 // 每 10 分鐘自動刷新(僅在看最新日期時)
