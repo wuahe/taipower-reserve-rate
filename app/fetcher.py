@@ -101,14 +101,20 @@ def parse_loadpara(data: dict) -> dict | None:
         logger.warning("缺少/無法解析負載或用電率: %s", exc)
         return None
 
-    # 供電能力:法A 用 real_hr_maxi_sply_capacity;法B 由用電率反推
+    # 供電能力(萬瓩):
+    #   real_hr_maxi_sply_capacity 實為台電「即時估算供電能力」(隨機組/再生能源
+    #   即時更新),與台電算「使用率」用的分母一致(非「今日最大供電能力」)。
+    #   經實測:凌晨機組未全開時此值(如 3724)遠低於今日最大(如 4351),且
+    #   ≈ 用電量÷使用率,故為即時值而非尖峰最大值,優先採用。
+    #   法B(用電量÷使用率)作為備援,但因使用率為整數會有誤差。
+    supply_a = None
     try:
         supply_a = float(flat["real_hr_maxi_sply_capacity"])
     except (KeyError, ValueError):
-        supply_a = None
+        pass
     supply_b = load / (util / 100) if util else None
 
-    # 主供電能力:優先用法A(官方即時最高供電能力),缺則用法B
+    # 主供電能力:優先用台電即時估算值,缺則退回用電率反推
     supply = supply_a if supply_a is not None else supply_b
     if supply is None:
         logger.warning("兩種供電能力皆無法取得")
