@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -60,6 +60,27 @@ def api_history(date: str | None = None) -> JSONResponse:
 @app.get("/api/dates")
 def api_dates() -> JSONResponse:
     return JSONResponse({"dates": db.get_dates()})
+
+
+@app.post("/api/ingest")
+async def api_ingest(request: Request) -> JSONResponse:
+    """接受外部推送的台電原始 JSON,解析後存入 DB。
+
+    用於 Tokyo 伺服器因 IP 封鎖無法直接抓台電時,
+    由台灣節點(GitHub Actions / n8n / Mac cron)推送資料。
+    資料格式與 loadpara.json 相同。
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+
+    reading = fetcher.parse_loadpara(body)
+    if reading is None:
+        raise HTTPException(status_code=422, detail="cannot parse loadpara data")
+
+    inserted = db.insert_reading(reading)
+    return JSONResponse({"ok": True, "inserted": inserted, "ts": reading["ts"]})
 
 
 @app.get("/api/latest")

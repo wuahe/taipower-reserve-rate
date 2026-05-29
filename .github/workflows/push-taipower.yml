@@ -1,0 +1,47 @@
+name: Push Taipower Data
+
+on:
+  schedule:
+    # 每 5 分鐘執行一次 (GitHub Actions 最小間隔為 5 分鐘)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # 允許手動觸發測試
+
+jobs:
+  push-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Fetch from Taipower and push to service
+        env:
+          INGEST_URL: https://taipower-reserve.zeabur.app/api/ingest
+        run: |
+          set -e
+
+          # 從台電抓即時資料
+          RESPONSE=$(curl -sf --max-time 15 \
+            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+            -H "Referer: https://www.taipower.com.tw/" \
+            -H "Accept: application/json, text/plain, */*" \
+            -H "Accept-Language: zh-TW,zh;q=0.9" \
+            "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json")
+
+          echo "Taipower response: $(echo $RESPONSE | head -c 200)"
+
+          # 推送到 Zeabur Tokyo 服務
+          HTTP_CODE=$(curl -sf --max-time 10 \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -w "%{http_code}" \
+            -d "$RESPONSE" \
+            -o /dev/null \
+            "$INGEST_URL")
+
+          echo "Ingest HTTP code: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ 資料推送成功"
+          else
+            echo "❌ 推送失敗 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
