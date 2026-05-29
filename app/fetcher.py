@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import ssl
 from zoneinfo import ZoneInfo
@@ -19,8 +20,9 @@ from . import db
 
 logger = logging.getLogger(__name__)
 
-LOADPARA_URL = (
-    "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json"
+LOADPARA_URL = os.environ.get(
+    "TAIPOWER_PROXY_URL",
+    "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json",
 )
 
 _HEADERS = {
@@ -140,19 +142,20 @@ def fetch_and_store() -> bool:
     使用持久 session:先 GET 首頁讓 CloudFront Bot Management 設置 cookie,
     再用同一 client 帶 cookie 請求 JSON,模擬真實瀏覽器行為繞過 IP 封鎖。
     """
+    using_proxy = LOADPARA_URL != "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json"
     try:
-        with httpx.Client(
-            verify=_SSL_CTX,
-            follow_redirects=True,
-            timeout=25,
-            headers=_HEADERS,
-        ) as client:
-            # 先訪問主頁取得 CloudFront cookie
-            client.get("https://www.taipower.com.tw/", timeout=15)
-            # 用同一 session 帶 cookie 請求資料
-            resp = client.get(LOADPARA_URL)
-            resp.raise_for_status()
-            data = resp.json()
+        if using_proxy:
+            # proxy 在台灣節點,直接抓不需要 session
+            resp = httpx.get(LOADPARA_URL, timeout=20)
+        else:
+            # 直連台電:需先訪問首頁建立 session 繞過 CloudFront
+            with httpx.Client(
+                verify=_SSL_CTX, follow_redirects=True, timeout=25, headers=_HEADERS,
+            ) as client:
+                client.get("https://www.taipower.com.tw/", timeout=15)
+                resp = client.get(LOADPARA_URL)
+        resp.raise_for_status()
+        data = resp.json()
     except (httpx.HTTPError, json.JSONDecodeError) as exc:
         logger.warning("抓取台電資料失敗,略過此次: %s", exc)
         return False
