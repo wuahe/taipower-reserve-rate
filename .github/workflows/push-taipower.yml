@@ -1,10 +1,9 @@
 name: Push Taipower Data
 
+# 備援用途:平常停用(主來源為 Zeabur 內建排程器直抓開放資料)。
+# 僅保留手動觸發 — 萬一主來源失效時可手動或臨時開啟 schedule 推資料。
 on:
-  schedule:
-    # 每 5 分鐘執行一次 (GitHub Actions 最小間隔為 5 分鐘)
-    - cron: '*/5 * * * *'
-  workflow_dispatch:  # 允許手動觸發測試
+  workflow_dispatch:
 
 jobs:
   push-data:
@@ -14,21 +13,21 @@ jobs:
     steps:
       - name: Fetch from Taipower and push to service
         env:
+          # 開放資料主機不擋國外 IP,GitHub runner 可直接抓
+          SOURCE_URL: https://service.taipower.com.tw/data/opendata/apply/file/d006020/001.json
           INGEST_URL: https://taipower-reserve.zeabur.app/api/ingest
         run: |
           set -e
 
-          # 從台電抓即時資料
+          # 從台電開放資料抓即時資料
           RESPONSE=$(curl -sf --max-time 15 \
             -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
-            -H "Referer: https://www.taipower.com.tw/" \
             -H "Accept: application/json, text/plain, */*" \
-            -H "Accept-Language: zh-TW,zh;q=0.9" \
-            "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json")
+            "$SOURCE_URL")
 
           echo "Taipower response: $(echo $RESPONSE | head -c 200)"
 
-          # 推送到 Zeabur Tokyo 服務
+          # 推送到 Zeabur 服務
           HTTP_CODE=$(curl -sf --max-time 10 \
             -X POST \
             -H "Content-Type: application/json" \
