@@ -1,46 +1,61 @@
-# 台電備轉容量率 · 全日曲線觀測
+# ⚡ 台電供電餘裕率 · Taipower Reserve Margin
 
-每 5 分鐘抓取台電即時電力資料,儲存時間序列,以網頁畫出整天的**備轉容量率**變化曲線(同時顯示即時負載、供電能力與供電燈號)。
+即時追蹤台灣電力系統的「供電餘裕率」,每數分鐘抓取台電開放資料,儲存整天的時間序列,並以網頁畫出**全日變化曲線**。
 
-## 為什麼需要自己存資料?
+🌐 **線上 Demo:** <https://taipower-reserve.zeabur.app>
 
-台電官網只提供**當下快照**(約每 10 分鐘更新),沒有「整天歷史曲線」的 API。因此本服務自己定時抓取並把每個時間點存進 SQLite,再由網頁讀出畫成曲線。
+![Dashboard](docs/dashboard.png)
 
-## 資料來源
+---
+
+## ✨ 功能
+
+- **全日曲線**:供電餘裕率、即時負載、供電能力三線同圖,每 5 分鐘更新一筆。
+- **即時卡片**:最新餘裕率、負載、供電能力、備轉容量。
+- **當日統計**:最高 / 最低 / 平均餘裕率、資料筆數、最後更新時間。
+- **供電燈號**:依餘裕率自動變色(綠 ≥10%、黃 6–10%、橘 3–6%、紅 <3%),主卡片發光提示。
+- **歷史回看**:日期選擇器可瀏覽過去任一天;每次開啟自動跳到今天。
+- **資料持久化**:SQLite 存於 Zeabur Volume,重新部署不掉資料。
+
+## 📊 資料來源與算法
+
+資料取自台電**開放資料**(不擋國外 IP,雲端可直接抓):
 
 ```
-https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json
+https://service.taipower.com.tw/data/opendata/apply/file/d006020/001.json
 ```
-
-需帶瀏覽器標頭(`User-Agent` + `Referer`),否則 CloudFront 回 403。
 
 | 欄位 | 意義 |
 |------|------|
-| `curr_load` | 即時負載 MW |
-| `curr_util_rate` | 即時用電率 %(負載 / 供電能力) |
-| `real_hr_maxi_sply_capacity` | 即時供電能力 MW |
-| `fore_peak_resv_indicator` | 當日燈號 G/Y/O/R |
-| `publish_time` | 民國時間戳,如 `115.05.29(五)16:00` |
+| `curr_load` | 即時負載(萬瓩) |
+| `real_hr_maxi_sply_capacity` | 即時估算供電能力(萬瓩) |
+| `publish_time` | 民國時間戳,如 `115.05.30(六)22:40` |
 
-**備轉容量率 % = (供電能力 − 負載) / 負載 × 100**
+> 台電原始單位為「萬瓩」(1 萬瓩 = 10 MW),顯示時換算為 MW。
 
-## 架構
+**供電餘裕率** = (供電能力 − 即時負載) ÷ 供電能力 × 100% = 1 − 使用率
+> 代表「供電能力還剩幾成沒被用掉」。與台電官方「備轉容量率」(分母為負載)定義不同,本站採用餘裕率以直覺反映即時剩餘餘裕。
+
+## 🏗️ 架構
 
 ```
-APScheduler(每5分鐘) ── fetch_and_store() ── SQLite (readings 表)
-FastAPI
-  GET /                       圖表頁(ECharts)
-  GET /api/history?date=…     某日所有資料點
-  GET /api/dates              有資料的日期清單
-  GET /api/latest             最新一筆
+Zeabur (Tokyo) · FastAPI 服務
+ ├─ APScheduler 每 5 分鐘 ── fetch_and_store() ── 抓開放資料 → 解析 → 寫入 SQLite
+ ├─ GET /                      圖表頁(ECharts 單頁)
+ ├─ GET /api/history?date=…    某日所有資料點
+ ├─ GET /api/dates             有資料的日期清單
+ ├─ GET /api/latest            最新一筆
+ └─ POST /api/ingest           備援:接受外部推送的台電 JSON
+SQLite (Zeabur Volume /data)   ts 為主鍵,INSERT OR IGNORE 天然去重
 ```
 
-- `app/db.py` — SQLite 儲存層,`ts` 為主鍵天然去重
-- `app/fetcher.py` — 抓取、民國時間解析、備轉率計算、錯誤容忍
-- `app/main.py` — FastAPI 路由 + 排程
-- `app/static/index.html` — 單檔前端(ECharts CDN,繁中)
+## 🛠️ 技術
 
-## 本地執行
+- **後端**:Python · FastAPI · APScheduler · httpx · SQLite
+- **前端**:原生 HTML + ECharts(CDN)· IBM Plex 字體
+- **部署**:Docker → Zeabur(GitHub 自動建置 + Volume 持久化)
+
+## 🚀 本地執行
 
 ```bash
 pip install -r requirements.txt
@@ -48,22 +63,20 @@ uvicorn app.main:app --reload --port 8080
 # 開 http://localhost:8080/
 ```
 
-啟動時會立即抓一次,之後每 5 分鐘抓一次(台電 10 分鐘才更新,重複的時間點以 `INSERT OR IGNORE` 去重)。
+資料庫預設寫在專案目錄 `taipower.db`;設環境變數 `DB_PATH` 可改路徑(Zeabur 上設為 `/data/taipower.db`)。
 
-資料庫預設寫在專案目錄 `taipower.db`;設環境變數 `DB_PATH` 可改路徑。
+## ☁️ 部署到 Zeabur
 
-## 部署到 Zeabur
+1. 推到 GitHub,Zeabur 以 **Dockerfile** 建置。
+2. 掛一顆 **Volume** 到 `/data`,並設環境變數 `DB_PATH=/data/taipower.db`。
+3. Zeabur 注入 `PORT`,容器自動監聽;開啟 domain 即可使用。
 
-1. 推到 Git repo,Zeabur 以 **Dockerfile** 建置。
-2. 掛一顆 **Volume** 到 `/data`,並設環境變數:
-   ```
-   DB_PATH=/data/taipower.db
-   ```
-   確保重啟 / 重新部署後歷史資料不流失。
-3. Zeabur 會注入 `PORT`,容器已監聽該埠;開啟 domain 即可使用。
-4. 部署後等待 ≥2 個 10 分鐘週期,確認資料點持續累積。
+## 🧯 備援機制
 
-## 備註
+主來源為 Zeabur 內建排程器直抓開放資料。若該主機失效,可改用以下任一備援推送到 `/api/ingest`(皆保留於 repo,平常停用):
 
-- 時區固定 `Asia/Taipei`,避免跨日 `date` 錯置。
-- `supply_mw` 主算法採台電「即時最高供電能力」;另存 `supply_mw_alt`(由用電率反推)備查,可日後比對官網數字調整。
+- `n8n_workflow.json` — n8n 排程流程(台灣節點)
+- `push_from_mac.py` — 本機推送腳本
+- `.github/workflows/push-taipower.yml` — GitHub Actions(手動觸發)
+
+`ts` 為主鍵,任何來源重複寫入同一時間點都會自動忽略,不會產生重複資料。
