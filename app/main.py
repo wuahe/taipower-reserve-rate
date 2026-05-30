@@ -1,4 +1,4 @@
-"""FastAPI 入口:提供圖表頁與資料 API,並掛載每 2 分鐘的抓取排程。"""
+"""FastAPI 入口:提供圖表頁與資料 API,並掛載每 5 分鐘的抓取排程。"""
 
 from __future__ import annotations
 
@@ -35,13 +35,13 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         fetcher.fetch_and_store,
         "interval",
-        minutes=2,
+        minutes=5,
         id="fetch_taipower",
         max_instances=1,
         coalesce=True,
     )
     scheduler.start()
-    logger.info("排程已啟動:每 2 分鐘抓取台電開放資料")
+    logger.info("排程已啟動:每 5 分鐘抓取台電開放資料")
     yield
     scheduler.shutdown(wait=False)
 
