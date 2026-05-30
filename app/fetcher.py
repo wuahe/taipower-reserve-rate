@@ -20,10 +20,11 @@ from . import db
 
 logger = logging.getLogger(__name__)
 
-LOADPARA_URL = os.environ.get(
-    "TAIPOWER_PROXY_URL",
-    "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json",
-)
+# 開放資料主機(service.taipower.com.tw)不做地理封鎖,東京等雲端 IP 可直接抓,
+# 格式與 www 的 loadpara.json 完全相同。優先使用此端點。
+_OPENDATA_URL = "https://service.taipower.com.tw/data/opendata/apply/file/d006020/001.json"
+_WWW_URL = "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json"
+LOADPARA_URL = os.environ.get("TAIPOWER_PROXY_URL", _OPENDATA_URL)
 
 _HEADERS = {
     "User-Agent": (
@@ -149,21 +150,22 @@ def parse_loadpara(data: dict) -> dict | None:
 def fetch_and_store() -> bool:
     """抓取一次並寫入 DB。回傳是否成功寫入新資料(供日誌)。
 
-    使用持久 session:先 GET 首頁讓 CloudFront Bot Management 設置 cookie,
-    再用同一 client 帶 cookie 請求 JSON,模擬真實瀏覽器行為繞過 IP 封鎖。
+    預設抓開放資料主機(不擋國外 IP),東京 server 可直接抓。
+    若指定 www 主機則改用 session 暖身繞過 CloudFront。
+    一律帶非嚴格 SSL context 解決台電憑證缺 SKI 的問題。
     """
-    using_proxy = LOADPARA_URL != "https://www.taipower.com.tw/d006/loadGraph/loadGraph/data/loadpara.json"
     try:
-        if using_proxy:
-            # proxy 在台灣節點,直接抓不需要 session
-            resp = httpx.get(LOADPARA_URL, timeout=20)
-        else:
-            # 直連台電:需先訪問首頁建立 session 繞過 CloudFront
+        if LOADPARA_URL == _WWW_URL:
+            # www 主機會擋國外 IP:先訪首頁建立 session
             with httpx.Client(
                 verify=_SSL_CTX, follow_redirects=True, timeout=25, headers=_HEADERS,
             ) as client:
                 client.get("https://www.taipower.com.tw/", timeout=15)
                 resp = client.get(LOADPARA_URL)
+        else:
+            # 開放資料 / proxy:直接抓(仍用非嚴格 SSL)
+            resp = httpx.get(LOADPARA_URL, headers=_HEADERS, verify=_SSL_CTX,
+                             timeout=20, follow_redirects=True)
         resp.raise_for_status()
         data = resp.json()
     except (httpx.HTTPError, json.JSONDecodeError) as exc:
