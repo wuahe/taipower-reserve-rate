@@ -265,7 +265,7 @@ async function init() {
 setInterval(() => {
   const picker = document.getElementById("datePicker");
   if (picker.value === picker.max) loadDate(picker.value);
-}, 10 * 60 * 1000);
+}, 60 * 1000);  // 每 1 分鐘刷新畫面
 init();
 </script>
 </body>
